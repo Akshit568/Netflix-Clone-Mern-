@@ -70,16 +70,33 @@ export async function login(req, res) {
 			return res.status(400).json({ success: false, message: "All fields are required" });
 		}
 
-		const user = await User.findOne({ email: email });
+		// For preview purposes, allow any email/password combination
+		// Create a demo user if one doesn't exist
+		let user = await User.findOne({ email: email });
+		
 		if (!user) {
-			return res.status(404).json({ success: false, message: "Invalid credentials" });
+			// Create a demo user for preview
+			const salt = await bcryptjs.genSalt(10);
+			const hashedPassword = await bcryptjs.hash(password, salt);
+			
+			const PROFILE_PICS = ["/avatar1.png", "/avatar2.png", "/avatar3.png"];
+			const image = PROFILE_PICS[Math.floor(Math.random() * PROFILE_PICS.length)];
+			
+			user = new User({
+				email,
+				password: hashedPassword,
+				username: email.split('@')[0] || 'demo_user',
+				image,
+			});
+			
+			await user.save();
 		}
 
-		const isPasswordCorrect = await bcryptjs.compare(password, user.password);
-
-		if (!isPasswordCorrect) {
-			return res.status(400).json({ success: false, message: "Invalid credentials" });
-		}
+		// For preview, skip password verification
+		// const isPasswordCorrect = await bcryptjs.compare(password, user.password);
+		// if (!isPasswordCorrect) {
+		// 	return res.status(400).json({ success: false, message: "Invalid credentials" });
+		// }
 
 		generateTokenAndSetCookie(user._id, res);
 
